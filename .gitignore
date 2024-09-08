@@ -1,0 +1,41 @@
+# Node.js dependencies
+node_modules/
+
+# TypeScript compiled output
+dist/
+build/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS specific files
+.DS_Store
+Thumbs.db
+
+# TypeScript cache
+*.tsbuildinfo
+
+# Environment variables
+.env
+
+# IDE and editor specific files
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+
+# Lock files
+package-lock.json
+yarn.lock
+
+# Coverage reports (if using testing libraries like Jest)
+coverage/
+
+# db files
+sqlite-db/
