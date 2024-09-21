@@ -4,18 +4,18 @@ import ChatRoom from './ChatRoom';
 import sequelize from './sequelize';
 
 class Message extends Model {
-    public id!: number;
+    public id!: string;
     public content!: string;
-    public readonly sentById!: number;
-    public readonly chatRoomId!: number;
+    public readonly sentById?: string;
+    public readonly chatRoomId!: string;
     public readonly createdAt!: Date;
     public readonly updatedAt!: Date;
 }
 
 Message.init({
     id: {
-        type: DataTypes.INTEGER,
-        autoIncrement: true,
+        type: DataTypes.UUIDV4,
+        defaultValue: DataTypes.UUIDV4,
         primaryKey: true
     },
     content: {
@@ -23,18 +23,20 @@ Message.init({
         allowNull: false
     },
     sentById: {
-        type: DataTypes.INTEGER,
+        type: DataTypes.UUIDV4,
         references: {
             model: User,
             key: 'id'
-        }
+        },
+        allowNull: true
     },
     chatRoomId: {
-        type: DataTypes.INTEGER,
+        type: DataTypes.UUIDV4,
         references: {
             model: ChatRoom,
             key: 'id'
-        }
+        },
+        allowNull: false
     }
 }, {
     sequelize,

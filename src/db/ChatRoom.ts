@@ -2,7 +2,7 @@ import { DataTypes, Model } from 'sequelize';
 import sequelize from './sequelize';
 
 class ChatRoom extends Model {
-    public id!: number;
+    public id!: string;
     public name!: string;
     public readonly createdAt!: Date;
     public readonly updatedAt!: Date;
@@ -10,8 +10,8 @@ class ChatRoom extends Model {
 
 ChatRoom.init({
     id: {
-        type: DataTypes.INTEGER,
-        autoIncrement: true,
+        type: DataTypes.UUIDV4,
+        defaultValue: DataTypes.UUIDV4,
         primaryKey: true
     },
     name: {

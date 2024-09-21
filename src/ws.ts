@@ -3,17 +3,43 @@ import { Server } from 'http';
 import Message from './db/Message';
 import User from './db/User';
 import ChatRoom from './db/ChatRoom';
+import supabase from './auth/supabaseClient';
+import { IncomingMessage } from 'http';
 
 interface ExtendedWebSocket extends WebSocket {
-    userId?: number;
-    chatRoomId?: number;
+    userId?: string;
+    chatRoomId?: string;
 }
 
 export const initializeWebSocket = async (server: Server) => {
-    const wss = new WebSocketServer({ server });
+    const wss = new WebSocketServer({ noServer: true });
+
+    server.on('upgrade', async (request: IncomingMessage, socket, head) => {
+        const token = request.headers['sec-websocket-protocol'] as string
+
+        if (!token) {
+            socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n')
+            socket.destroy()
+            return
+        }
+
+        try {
+            const { data, error } = await supabase.auth.getUser(token)
+            if (error || !data.user) throw error
+
+            wss.handleUpgrade(request, socket, head, (ws: ExtendedWebSocket) => {
+                ws.userId = data.user.id
+                wss.emit('connection', ws, request)
+            })
+        } catch (error) {
+            console.error('WebSocket authentication error:', error)
+            socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n')
+            socket.destroy()
+        }
+    })
 
     wss.on('connection', (ws: ExtendedWebSocket) => {
-        console.log('New client connected');
+        console.log(`User ${ws.userId} connected`)
 
         ws.on('message', async (message: string) => {
             try {
@@ -49,8 +75,7 @@ export const initializeWebSocket = async (server: Server) => {
 
     console.log('WebSocket server is running on ws://localhost:8080');
 }
-
-async function fetchRecentMessages(chatRoomId: number) {
+async function fetchRecentMessages(chatRoomId: string) {
     const recentMessages = await Message.findAll({
         where: { chatRoomId: chatRoomId },
         order: [['createdAt', 'DESC']],

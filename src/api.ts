@@ -1,27 +1,90 @@
 import express, { Request, Response } from 'express';
 import User from './db/User';
 import ChatRoom from './db/ChatRoom';
+import { authenticateUser, AuthenticatedRequest } from './middleware/auth';
+import supabase from './auth/supabaseClient';
 
 export const createApi = () => {
   const app = express();
   app.use(express.json());
 
-  // User endpoints
-  app.post('/users', async (req: Request, res: Response) => {
+  // Signup endpoint
+  app.post('/signup', async (req: Request, res: Response) => {
+    const { email, password, firstName, lastName } = req.body;
+
     try {
-      const user = await User.create(req.body);
-      res.status(201).json(user);
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+      });
+
+      if (error) throw error;
+
+      if (data.user) {
+        // Create a corresponding user in your database
+        const newUser = await User.create({
+          supabaseId: data.user.id,
+          firstName,
+          lastName,
+          email
+        });
+
+        res.status(201).json({
+          message: 'User created successfully',
+          user: newUser,
+        });
+      } else {
+        // This case happens when email confirmation is required
+        res.status(200).json({
+          message: 'Signup successful. Please check your email for confirmation.',
+        });
+      }
     } catch (error) {
+      console.error('Signup error:', error);
       res.status(400).json({ error: 'Failed to create user' });
     }
   });
 
-  app.get('/users', async (req: Request, res: Response) => {
+  // Login endpoint
+  app.post('/login', async (req: Request, res: Response) => {
+    const { email, password } = req.body;
+
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) throw error;
+
+      // Find the corresponding user in our database
+      const user = await User.findOne({ where: { supabaseId: data.user.id } });
+
+      if (!user) {
+        throw new Error('User not found in database');
+      }
+
+      res.json({
+        message: 'Login successful',
+        user: user,
+        session: data.session,
+      });
+    } catch (error) {
+      console.error('Login error:', error);
+      res.status(401).json({ error: 'Invalid credentials' });
+    }
+  });
+
+  // Apply authentication middleware to all routes below
+  app.use(authenticateUser);
+
+  // User endpoints
+  app.get('/users', async (req: AuthenticatedRequest, res: Response) => {
     const users = await User.findAll();
     res.json(users);
   });
 
-  app.get('/users/:id', async (req: Request, res: Response) => {
+  app.get('/users/:id', async (req: AuthenticatedRequest, res: Response) => {
     const user = await User.findByPk(req.params.id);
     if (user) {
       res.json(user);
@@ -30,35 +93,37 @@ export const createApi = () => {
     }
   });
 
-  app.put('/users/:id', async (req: Request, res: Response) => {
-    try {
-      const [updated] = await User.update(req.body, {
-        where: { id: req.params.id }
-      });
-      if (updated) {
-        const updatedUser = await User.findByPk(req.params.id);
-        res.json(updatedUser);
-      } else {
-        res.status(404).json({ error: 'User not found' });
-      }
-    } catch (error) {
-      res.status(400).json({ error: 'Failed to update user' });
-    }
-  });
+  app.delete('/users/:id', async (req: AuthenticatedRequest, res: Response) => {
+    const userId = req.params.id;
 
-  app.delete('/users/:id', async (req: Request, res: Response) => {
-    const deleted = await User.destroy({
-      where: { id: req.params.id }
-    });
-    if (deleted) {
+    // Ensure the authenticated user can only delete their own account
+    if (req.user?.id !== userId) {
+      return res.status(403).json({ error: 'You can only delete your own account' });
+    }
+
+    try {
+      // Delete user from your database
+      const deleted = await User.destroy({
+        where: { id: userId }
+      });
+
+      if (!deleted) {
+        return res.status(404).json({ error: 'User not found in local database' });
+      }
+
+      // Delete user from Supabase
+      const { error } = await supabase.auth.admin.deleteUser(userId);
+      if (error) throw error;
+
       res.status(204).send();
-    } else {
-      res.status(404).json({ error: 'User not found' });
+    } catch (error) {
+      console.error('Error deleting user:', error);
+      res.status(500).json({ error: 'Failed to delete user' });
     }
   });
 
   // ChatRoom endpoints
-  app.post('/chatrooms', async (req: Request, res: Response) => {
+  app.post('/chatrooms', async (req: AuthenticatedRequest, res: Response) => {
     try {
       const chatRoom = await ChatRoom.create(req.body);
       res.status(201).json(chatRoom);
@@ -67,12 +132,12 @@ export const createApi = () => {
     }
   });
 
-  app.get('/chatrooms', async (req: Request, res: Response) => {
+  app.get('/chatrooms', async (req: AuthenticatedRequest, res: Response) => {
     const chatRooms = await ChatRoom.findAll();
     res.json(chatRooms);
   });
 
-  app.get('/chatrooms/:id', async (req: Request, res: Response) => {
+  app.get('/chatrooms/:id', async (req: AuthenticatedRequest, res: Response) => {
     const chatRoom = await ChatRoom.findByPk(req.params.id);
     if (chatRoom) {
       res.json(chatRoom);
@@ -81,7 +146,7 @@ export const createApi = () => {
     }
   });
 
-  app.put('/chatrooms/:id', async (req: Request, res: Response) => {
+  app.put('/chatrooms/:id', async (req: AuthenticatedRequest, res: Response) => {
     try {
       const [updated] = await ChatRoom.update(req.body, {
         where: { id: req.params.id }
@@ -97,7 +162,7 @@ export const createApi = () => {
     }
   });
 
-  app.delete('/chatrooms/:id', async (req: Request, res: Response) => {
+  app.delete('/chatrooms/:id', async (req: AuthenticatedRequest, res: Response) => {
     const deleted = await ChatRoom.destroy({
       where: { id: req.params.id }
     });
