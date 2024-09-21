@@ -11,7 +11,6 @@ interface ExtendedWebSocket extends WebSocket {
 export const initializeWebSocket = async (server: Server) => {
     const wss = new WebSocketServer({ server });
 
-    // Create or find the default chat room
     const [defaultRoom] = await ChatRoom.findOrCreate({
         where: { name: 'Default Room' },
         defaults: { name: 'Default Room' }
@@ -23,23 +22,28 @@ export const initializeWebSocket = async (server: Server) => {
         ws.on('message', async (message: string) => {
             try {
                 const data = JSON.parse(message.toString());
-                
+
                 if (data.type === 'join') {
-                    // Handle user joining
                     const user = await User.findByPk(data.userId);
                     if (user) {
                         ws.userId = user.id;
-                        console.log(`User ${user.firstName} ${user.lastName} joined`);
+                        console.log(`User ${user.id} joined`);
                     }
-                } else if (data.type === 'message' && ws.userId) {
-                    // Handle new message
+                } else if (data.type === 'message') {
+                    if (!ws.userId) {
+                        // Error if userId is not set
+                        ws.send(JSON.stringify({ type: 'error', message: 'You must join the chat first.' }));
+                        return;
+                    }
+
                     const newMessage = await Message.create({
                         message: data.content,
                         sentById: ws.userId,
                         chatRoomId: defaultRoom.id
                     });
 
-                    // Broadcast message to all connected clients
+                    console.log(`User ${ws.userId} sent a message: ${data.content}`);
+
                     const broadcastMessage = JSON.stringify({
                         type: 'message',
                         userId: ws.userId,
@@ -52,6 +56,9 @@ export const initializeWebSocket = async (server: Server) => {
                             client.send(broadcastMessage);
                         }
                     });
+                } else {
+                    // Error for unsupported message types
+                    ws.send(JSON.stringify({ type: 'error', message: 'Unsupported message type.' }));
                 }
             } catch (error) {
                 console.error('Error processing message:', error);
@@ -60,7 +67,11 @@ export const initializeWebSocket = async (server: Server) => {
         });
 
         ws.on('close', () => {
-            console.log('Client disconnected');
+            if (ws.userId) {
+                console.log(`User ${ws.userId} left the chatroom`);
+            } else {
+                console.log('Client disconnected');
+            }
         });
     });
 
