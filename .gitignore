@@ -38,4 +38,4 @@ yarn.lock
 coverage/
 
 # db files
-sqlite-db/
+sqlite/
