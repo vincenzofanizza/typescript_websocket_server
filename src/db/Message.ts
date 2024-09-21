@@ -5,7 +5,7 @@ import sequelize from './sequelize';
 
 class Message extends Model {
     public id!: number;
-    public message!: string;
+    public content!: string;
     public readonly sentById!: number;
     public readonly chatRoomId!: number;
     public readonly createdAt!: Date;
@@ -18,7 +18,7 @@ Message.init({
         autoIncrement: true,
         primaryKey: true
     },
-    message: {
+    content: {
         type: DataTypes.STRING,
         allowNull: false
     },

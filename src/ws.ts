@@ -50,6 +50,15 @@ export const initializeWebSocket = async (server: Server) => {
     console.log('WebSocket server is running on ws://localhost:8080');
 }
 
+async function fetchRecentMessages(chatRoomId: number) {
+    const recentMessages = await Message.findAll({
+        where: { chatRoomId: chatRoomId },
+        order: [['createdAt', 'DESC']],
+        limit: 50
+    });
+    return recentMessages;
+}
+
 async function handleJoin(ws: ExtendedWebSocket, data: any) {
     const user = await User.findByPk(data.userId);
     const chatRoom = await ChatRoom.findByPk(data.chatRoomId);
@@ -58,7 +67,14 @@ async function handleJoin(ws: ExtendedWebSocket, data: any) {
         ws.userId = user.id;
         ws.chatRoomId = chatRoom.id;
         console.log(`User ${user.id} joined chatroom ${chatRoom.id}`);
-        ws.send(JSON.stringify({ type: 'joinSuccess', chatRoomId: chatRoom.id }));
+        
+        const messages = await fetchRecentMessages(chatRoom.id);
+
+        ws.send(JSON.stringify({ 
+            type: 'joinSuccess', 
+            chatRoomId: chatRoom.id,
+            messages: messages
+        }));
     } else {
         ws.send(JSON.stringify({ type: 'error', message: 'Invalid user or chatroom.' }));
     }
@@ -71,7 +87,7 @@ async function handleMessage(ws: ExtendedWebSocket, data: any, wss: WebSocketSer
     }
 
     const newMessage = await Message.create({
-        message: data.content,
+        content: data.content,
         sentById: ws.userId,
         chatRoomId: ws.chatRoomId
     });
@@ -105,7 +121,14 @@ async function handleSwitchRoom(ws: ExtendedWebSocket, data: any) {
         const oldRoomId = ws.chatRoomId;
         ws.chatRoomId = chatRoom.id;
         console.log(`User ${ws.userId} switched from chatroom ${oldRoomId} to ${chatRoom.id}`);
-        ws.send(JSON.stringify({ type: 'switchSuccess', chatRoomId: chatRoom.id }));
+        
+        const messages = await fetchRecentMessages(chatRoom.id);
+
+        ws.send(JSON.stringify({ 
+            type: 'switchSuccess', 
+            chatRoomId: chatRoom.id,
+            messages
+        }));
     } else {
         ws.send(JSON.stringify({ type: 'error', message: 'Invalid chatroom.' }));
     }
