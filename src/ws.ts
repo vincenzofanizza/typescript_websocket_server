@@ -6,15 +6,11 @@ import ChatRoom from './db/ChatRoom';
 
 interface ExtendedWebSocket extends WebSocket {
     userId?: number;
+    chatRoomId?: number;
 }
 
 export const initializeWebSocket = async (server: Server) => {
     const wss = new WebSocketServer({ server });
-
-    const [defaultRoom] = await ChatRoom.findOrCreate({
-        where: { name: 'Default Room' },
-        defaults: { name: 'Default Room' }
-    });
 
     wss.on('connection', (ws: ExtendedWebSocket) => {
         console.log('New client connected');
@@ -23,42 +19,18 @@ export const initializeWebSocket = async (server: Server) => {
             try {
                 const data = JSON.parse(message.toString());
 
-                if (data.type === 'join') {
-                    const user = await User.findByPk(data.userId);
-                    if (user) {
-                        ws.userId = user.id;
-                        console.log(`User ${user.id} joined`);
-                    }
-                } else if (data.type === 'message') {
-                    if (!ws.userId) {
-                        // Error if userId is not set
-                        ws.send(JSON.stringify({ type: 'error', message: 'You must join the chat first.' }));
-                        return;
-                    }
-
-                    const newMessage = await Message.create({
-                        message: data.content,
-                        sentById: ws.userId,
-                        chatRoomId: defaultRoom.id
-                    });
-
-                    console.log(`User ${ws.userId} sent a message: ${data.content}`);
-
-                    const broadcastMessage = JSON.stringify({
-                        type: 'message',
-                        userId: ws.userId,
-                        content: data.content,
-                        timestamp: newMessage.createdAt
-                    });
-
-                    wss.clients.forEach((client) => {
-                        if (client.readyState === WebSocket.OPEN) {
-                            client.send(broadcastMessage);
-                        }
-                    });
-                } else {
-                    // Error for unsupported message types
-                    ws.send(JSON.stringify({ type: 'error', message: 'Unsupported message type.' }));
+                switch (data.type) {
+                    case 'join':
+                        await handleJoin(ws, data);
+                        break;
+                    case 'message':
+                        await handleMessage(ws, data, wss);
+                        break;
+                    case 'switchRoom':
+                        await handleSwitchRoom(ws, data);
+                        break;
+                    default:
+                        ws.send(JSON.stringify({ type: 'error', message: 'Unsupported message type.' }));
                 }
             } catch (error) {
                 console.error('Error processing message:', error);
@@ -68,12 +40,73 @@ export const initializeWebSocket = async (server: Server) => {
 
         ws.on('close', () => {
             if (ws.userId) {
-                console.log(`User ${ws.userId} left the chatroom`);
+                console.log(`User ${ws.userId} left the chatroom ${ws.chatRoomId}`);
             } else {
                 console.log('Client disconnected');
             }
         });
     });
 
-    console.log('WebSocket server is running.');
+    console.log('WebSocket server is running on ws://localhost:8080');
+}
+
+async function handleJoin(ws: ExtendedWebSocket, data: any) {
+    const user = await User.findByPk(data.userId);
+    const chatRoom = await ChatRoom.findByPk(data.chatRoomId);
+    
+    if (user && chatRoom) {
+        ws.userId = user.id;
+        ws.chatRoomId = chatRoom.id;
+        console.log(`User ${user.id} joined chatroom ${chatRoom.id}`);
+        ws.send(JSON.stringify({ type: 'joinSuccess', chatRoomId: chatRoom.id }));
+    } else {
+        ws.send(JSON.stringify({ type: 'error', message: 'Invalid user or chatroom.' }));
+    }
+}
+
+async function handleMessage(ws: ExtendedWebSocket, data: any, wss: WebSocketServer) {
+    if (!ws.userId || !ws.chatRoomId) {
+        ws.send(JSON.stringify({ type: 'error', message: 'You must join a chatroom first.' }));
+        return;
+    }
+
+    const newMessage = await Message.create({
+        message: data.content,
+        sentById: ws.userId,
+        chatRoomId: ws.chatRoomId
+    });
+
+    console.log(`User ${ws.userId} sent a message in chatroom ${ws.chatRoomId}: ${data.content}`);
+
+    const broadcastMessage = JSON.stringify({
+        type: 'message',
+        userId: ws.userId,
+        content: data.content,
+        timestamp: newMessage.createdAt,
+        chatRoomId: ws.chatRoomId
+    });
+
+    wss.clients.forEach((client: ExtendedWebSocket) => {
+        if (client.readyState === WebSocket.OPEN && client.chatRoomId === ws.chatRoomId) {
+            client.send(broadcastMessage);
+        }
+    });
+}
+
+async function handleSwitchRoom(ws: ExtendedWebSocket, data: any) {
+    if (!ws.userId) {
+        ws.send(JSON.stringify({ type: 'error', message: 'You must join a chatroom first.' }));
+        return;
+    }
+
+    const chatRoom = await ChatRoom.findByPk(data.chatRoomId);
+    
+    if (chatRoom) {
+        const oldRoomId = ws.chatRoomId;
+        ws.chatRoomId = chatRoom.id;
+        console.log(`User ${ws.userId} switched from chatroom ${oldRoomId} to ${chatRoom.id}`);
+        ws.send(JSON.stringify({ type: 'switchSuccess', chatRoomId: chatRoom.id }));
+    } else {
+        ws.send(JSON.stringify({ type: 'error', message: 'Invalid chatroom.' }));
+    }
 }
