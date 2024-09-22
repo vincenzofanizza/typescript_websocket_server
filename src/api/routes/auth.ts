@@ -48,8 +48,8 @@ const { email, password } = req.body;
 
 try {
     const { data, error } = await supabase.auth.signInWithPassword({
-    email,
-    password,
+        email,
+        password,
     });
 
     if (error) throw error;
@@ -59,9 +59,9 @@ try {
     }
 
     res.json({
-    message: 'Login successful',
-    user: data.user,
-    session: data.session,
+        message: 'Login successful',
+        user: data.user,
+        session: data.session,
     });
 } catch (error) {
     console.error('Login error:', error);

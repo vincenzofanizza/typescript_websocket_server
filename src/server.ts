@@ -3,8 +3,6 @@ import sequelize from './db/sequelize';
 import { createApi } from './api/router';
 import { initializeWebSocket } from './ws';
 
-// TODO: Add authorization to all endpoints
-
 const port = 8080;
 
 const apiApp = createApi();
