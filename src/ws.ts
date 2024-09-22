@@ -3,7 +3,7 @@ import { Server } from 'http';
 import Message from './db/Message';
 import User from './db/User';
 import ChatRoom from './db/ChatRoom';
-import { supabase } from './utils/supabaseClient';
+import { supabase } from './utils/supabase';
 import { IncomingMessage } from 'http';
 
 interface ExtendedWebSocket extends WebSocket {
@@ -16,7 +16,7 @@ interface WebSocketMessage {
     userId?: string;
     chatRoomId?: string;
     content?: string;
-  }
+}
 
 export const initializeWebSocket = async (server: Server) => {
     const wss = new WebSocketServer({ noServer: true });
