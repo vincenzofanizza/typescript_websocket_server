@@ -36,6 +36,3 @@ yarn.lock
 
 # Coverage reports (if using testing libraries like Jest)
 coverage/
-
-# db files
-sqlite/

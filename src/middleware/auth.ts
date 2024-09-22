@@ -1,8 +1,9 @@
 import { Request, Response, NextFunction } from 'express'
-import supabase from '../auth/supabaseClient'
+import { supabase } from '../utils/supabaseClient'
+import { User } from '@supabase/auth-js'
 
 export interface AuthenticatedRequest extends Request {
-  user?: any
+  supabaseUser?: User
 }
 
 export const authenticateUser = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
@@ -20,6 +21,6 @@ export const authenticateUser = async (req: AuthenticatedRequest, res: Response,
     return res.status(401).json({ error: 'Invalid token' })
   }
 
-  req.user = data.user
+  req.supabaseUser = data.user
   next()
 }

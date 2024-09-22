@@ -8,6 +8,7 @@ const port = 8080;
 const apiApp = createApi();
 const server = createServer(apiApp);
 
+// TODO: Add authorization to all endpoints
 // Create database and tables if they don't exist
 sequelize.sync().then(() => {
   console.log('Database & tables created!');

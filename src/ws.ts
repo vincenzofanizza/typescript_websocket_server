@@ -3,13 +3,20 @@ import { Server } from 'http';
 import Message from './db/Message';
 import User from './db/User';
 import ChatRoom from './db/ChatRoom';
-import supabase from './auth/supabaseClient';
+import { supabase } from './utils/supabaseClient';
 import { IncomingMessage } from 'http';
 
 interface ExtendedWebSocket extends WebSocket {
     userId?: string;
     chatRoomId?: string;
 }
+
+interface WebSocketMessage {
+    type: string;
+    userId?: string;
+    chatRoomId?: string;
+    content?: string;
+  }
 
 export const initializeWebSocket = async (server: Server) => {
     const wss = new WebSocketServer({ noServer: true });
@@ -84,7 +91,7 @@ async function fetchRecentMessages(chatRoomId: string) {
     return recentMessages;
 }
 
-async function handleJoin(ws: ExtendedWebSocket, data: any) {
+async function handleJoin(ws: ExtendedWebSocket, data: WebSocketMessage) {
     const user = await User.findByPk(data.userId);
     const chatRoom = await ChatRoom.findByPk(data.chatRoomId);
     
@@ -105,26 +112,29 @@ async function handleJoin(ws: ExtendedWebSocket, data: any) {
     }
 }
 
-async function handleMessage(ws: ExtendedWebSocket, data: any, wss: WebSocketServer) {
+async function handleMessage(ws: ExtendedWebSocket, data: WebSocketMessage, wss: WebSocketServer) {
     if (!ws.userId || !ws.chatRoomId) {
         ws.send(JSON.stringify({ type: 'error', message: 'You must join a chatroom first.' }));
         return;
     }
 
-    const newMessage = await Message.create({
-        content: data.content,
-        sentById: ws.userId,
-        chatRoomId: ws.chatRoomId
-    });
+    const newMessage = await Message.create(
+        {
+            content: data.content,
+            sentById: ws.userId,
+            chatRoomId: ws.chatRoomId
+        },
+        {
+            include: [{ model: User, as: 'sentBy' }]
+        }
+    );
 
     console.log(`User ${ws.userId} sent a message in chatroom ${ws.chatRoomId}: ${data.content}`);
 
     const broadcastMessage = JSON.stringify({
         type: 'message',
-        userId: ws.userId,
-        content: data.content,
-        timestamp: newMessage.createdAt,
-        chatRoomId: ws.chatRoomId
+        chatRoomId: ws.chatRoomId,
+        message: newMessage
     });
 
     wss.clients.forEach((client: ExtendedWebSocket) => {
@@ -134,7 +144,7 @@ async function handleMessage(ws: ExtendedWebSocket, data: any, wss: WebSocketSer
     });
 }
 
-async function handleSwitchRoom(ws: ExtendedWebSocket, data: any) {
+async function handleSwitchRoom(ws: ExtendedWebSocket, data: WebSocketMessage) {
     if (!ws.userId) {
         ws.send(JSON.stringify({ type: 'error', message: 'You must join a chatroom first.' }));
         return;
