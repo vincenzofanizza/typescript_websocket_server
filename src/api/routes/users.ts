@@ -17,7 +17,7 @@ router.get('/', async (req: AuthenticatedRequest, res: Response) => {
 
 router.get('/me', async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const user = await User.findOne({ where: { supabaseId: req.supabaseUser?.id } });
+    const user = await User.findByPk(req.supabaseUser?.id);
     if (user) {
       res.json(user);
     } else {
@@ -48,20 +48,20 @@ router.delete('/:id', async (req: AuthenticatedRequest, res: Response) => {
 
   try {
     // Fetch requesting user using supabaseId
-    const user = await User.findOne({ where: { supabaseId: req.supabaseUser?.id } });
+    const user = await User.findByPk(req.supabaseUser?.id);
 
     if (!user) {
       return res.status(404).json({ error: 'User not found in local database' });
     }
     
     // Ensure the authenticated user can only delete their own account
-    if (user.id !== userId) {
+    if (user.supabaseId !== userId) {
       return res.status(403).json({ error: 'You can only delete your own account' });
     }
 
     // Delete user from your database
     const deleted = await User.destroy({
-      where: { id: userId }
+      where: { supabaseId: userId }
     });
 
     if (!deleted) {

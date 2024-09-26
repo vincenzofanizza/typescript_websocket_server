@@ -2,7 +2,6 @@ import { DataTypes, Model } from 'sequelize';
 import sequelize from './sequelize';
 
 class User extends Model {
-    public id!: string;
     public supabaseId!: string;
     public firstName!: string;
     public lastName!: string;
@@ -12,15 +11,10 @@ class User extends Model {
 }
 
 User.init({
-    id: {
-        type: DataTypes.UUID,
-        defaultValue: DataTypes.UUIDV4,
-        primaryKey: true
-    },
     supabaseId: {
         type: DataTypes.UUID,
         allowNull: false,
-        unique: true
+        primaryKey: true
     },
     firstName: {
         type: DataTypes.STRING,

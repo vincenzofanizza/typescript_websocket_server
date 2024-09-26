@@ -27,7 +27,7 @@ Message.init({
         type: DataTypes.UUID,
         references: {
             model: User,
-            key: 'id'
+            key: 'supabaseId'
         },
         allowNull: true
     },

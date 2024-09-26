@@ -86,7 +86,8 @@ async function fetchRecentMessages(chatRoomId: string) {
     const recentMessages = await Message.findAll({
         where: { chatRoomId: chatRoomId },
         order: [['createdAt', 'DESC']],
-        limit: 50
+        limit: 50,
+        include: [{ model: User, as: 'sentBy' }]
     });
     return recentMessages;
 }
@@ -96,9 +97,9 @@ async function handleJoin(ws: ExtendedWebSocket, data: WebSocketMessage) {
     const chatRoom = await ChatRoom.findByPk(data.chatRoomId);
     
     if (user && chatRoom) {
-        ws.userId = user.id;
+        ws.userId = user.supabaseId;
         ws.chatRoomId = chatRoom.id;
-        console.log(`User ${user.id} joined chatroom ${chatRoom.id}`);
+        console.log(`User ${user.supabaseId} joined chatroom ${chatRoom.id}`);
         
         const messages = await fetchRecentMessages(chatRoom.id);
 
@@ -118,16 +119,16 @@ async function handleMessage(ws: ExtendedWebSocket, data: WebSocketMessage, wss:
         return;
     }
 
-    const newMessage = await Message.create(
-        {
-            content: data.content,
-            sentById: ws.userId,
-            chatRoomId: ws.chatRoomId
-        },
-        {
+    const newMessage = await Message.create({
+        content: data.content,
+        sentById: ws.userId,
+        chatRoomId: ws.chatRoomId
+    })
+    .then(newMessage => {
+        return Message.findByPk(newMessage.id, {
             include: [{ model: User, as: 'sentBy' }]
-        }
-    );
+        });
+    })
 
     console.log(`User ${ws.userId} sent a message in chatroom ${ws.chatRoomId}: ${data.content}`);
 
