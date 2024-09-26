@@ -9,7 +9,6 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-// TODO: Add authorization to all endpoints
 export const createApi = () => {
   const app = express();
 

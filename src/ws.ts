@@ -93,6 +93,11 @@ async function fetchRecentMessages(chatRoomId: string) {
 }
 
 async function handleJoin(ws: ExtendedWebSocket, data: WebSocketMessage) {
+    if (ws.userId && ws.userId !== data.userId) {
+        ws.send(JSON.stringify({ type: 'error', message: 'User ID mismatch.' }));
+        return;
+    }
+
     const user = await User.findByPk(data.userId);
     const chatRoom = await ChatRoom.findByPk(data.chatRoomId);
     
@@ -116,6 +121,11 @@ async function handleJoin(ws: ExtendedWebSocket, data: WebSocketMessage) {
 async function handleMessage(ws: ExtendedWebSocket, data: WebSocketMessage, wss: WebSocketServer) {
     if (!ws.userId || !ws.chatRoomId) {
         ws.send(JSON.stringify({ type: 'error', message: 'You must join a chatroom first.' }));
+        return;
+    }
+
+    if (data.userId && ws.userId !== data.userId) {
+        ws.send(JSON.stringify({ type: 'error', message: 'User ID mismatch.' }));
         return;
     }
 
@@ -148,6 +158,11 @@ async function handleMessage(ws: ExtendedWebSocket, data: WebSocketMessage, wss:
 async function handleSwitchRoom(ws: ExtendedWebSocket, data: WebSocketMessage) {
     if (!ws.userId) {
         ws.send(JSON.stringify({ type: 'error', message: 'You must join a chatroom first.' }));
+        return;
+    }
+
+    if (data.userId && ws.userId !== data.userId) {
+        ws.send(JSON.stringify({ type: 'error', message: 'User ID mismatch.' }));
         return;
     }
 
