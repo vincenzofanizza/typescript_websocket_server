@@ -69,4 +69,32 @@ try {
 }
 });
 
+// /me endpoint
+router.get('/me', async (req: Request, res: Response) => {
+    const authHeader = req.headers.authorization;
+    const token = authHeader && authHeader.split(' ')[1];
+
+    if (!token) {
+        return res.status(401).json({ error: 'No token provided' });
+    }
+
+    try {
+        const { data: { user }, error } = await supabase.auth.getUser(token);
+
+        if (error) {
+            console.error('Error fetching user:', error);
+            return res.status(401).json({ error: 'Invalid or expired token' });
+        }
+
+        if (user) {
+            res.json(user);
+        } else {
+            res.status(404).json({ error: 'User not found' });
+        }
+    } catch (error) {
+        console.error('Server error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
 export default router;

@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express'
-import { supabase } from '../../utils/supabase'
+import { supabaseAdmin } from '../../utils/supabase'
 import { User } from '@supabase/auth-js'
 
 export interface AuthenticatedRequest extends Request {
@@ -15,7 +15,7 @@ export const authenticateUser = async (req: AuthenticatedRequest, res: Response,
 
   const token = authHeader.split(' ')[1]
 
-  const { data, error } = await supabase.auth.getUser(token)
+  const { data, error } = await supabaseAdmin.auth.getUser(token)
 
   if (error || !data.user) {
     return res.status(401).json({ error: 'Invalid token' })

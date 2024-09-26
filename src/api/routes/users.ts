@@ -15,20 +15,6 @@ router.get('/', async (req: AuthenticatedRequest, res: Response) => {
   }
 });
 
-router.get('/me', async (req: AuthenticatedRequest, res: Response) => {
-  try {
-    const user = await User.findByPk(req.supabaseUser?.id);
-    if (user) {
-      res.json(user);
-    } else {
-      res.status(404).json({ error: 'User not found in local database' });
-    }
-  } catch (error) {
-    console.error('Error fetching user:', error);
-    res.status(500).json({ error: 'Failed to fetch user' });
-  }
-});
-
 router.get('/:id', async (req: AuthenticatedRequest, res: Response) => {
   try {
     const user = await User.findByPk(req.params.id);
