@@ -79,15 +79,29 @@ router.get('/me', async (req: Request, res: Response) => {
     }
 
     try {
+        // First, try to get the user with the provided token
         const { data: { user }, error } = await supabase.auth.getUser(token);
 
-        if (error) {
-            console.error('Error fetching user:', error);
-            return res.status(401).json({ error: 'Invalid or expired token' });
+        if (error && error.message === 'Invalid JWT') {
+            // If the token is invalid, try to refresh it
+            const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession({ refresh_token: token });
+
+            if (refreshError) {
+                console.error('Error refreshing token:', refreshError);
+                return res.status(401).json({ error: 'Invalid or expired token' });
+            }
+
+            if (refreshData.user) {
+                // Return the refreshed user data and new tokens
+                return res.json({
+                    user: refreshData.user,
+                    session: refreshData.session
+                });
+            }
         }
 
         if (user) {
-            res.json(user);
+            res.json({ user });
         } else {
             res.status(404).json({ error: 'User not found' });
         }
