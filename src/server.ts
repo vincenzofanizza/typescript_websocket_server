@@ -1,7 +1,7 @@
 import { createServer } from 'http';
 import sequelize from './db/sequelize';
 import { createApi } from './api/router';
-import { initializeWebSocket } from './ws';
+import { initializeWebSocket } from './ws/server';
 import { defineAssociations } from './db/associations';
 const port = 8080;
 
