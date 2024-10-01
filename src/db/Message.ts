@@ -1,6 +1,4 @@
 import { DataTypes, Model } from 'sequelize';
-import User from './User';
-import ChatRoom from './ChatRoom';
 import sequelize from './sequelize';
 
 class Message extends Model {
@@ -9,7 +7,6 @@ class Message extends Model {
     public readonly createdAt!: Date;
     public readonly updatedAt!: Date;
     public readonly sentById?: string;
-    public sentBy?: User;
     public readonly chatRoomId!: string;
 }
 
@@ -25,18 +22,10 @@ Message.init({
     },
     sentById: {
         type: DataTypes.UUID,
-        references: {
-            model: User,
-            key: 'supabaseId'
-        },
         allowNull: true
     },
     chatRoomId: {
         type: DataTypes.UUID,
-        references: {
-            model: ChatRoom,
-            key: 'id'
-        },
         allowNull: false
     }
 }, {
@@ -44,7 +33,5 @@ Message.init({
     modelName: 'Message',
     timestamps: true
 });
-
-Message.belongsTo(User, { foreignKey: 'sentById', as: 'sentBy' });
 
 export default Message;

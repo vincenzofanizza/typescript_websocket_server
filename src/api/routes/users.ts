@@ -7,7 +7,9 @@ const router = express.Router();
 
 router.get('/', async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const users = await User.findAll();
+    const users = await User.findAll({
+      order: [['createdAt', 'DESC']]
+    });
     res.json(users);
   } catch (error) {
     console.error('Error fetching users:', error);

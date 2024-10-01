@@ -7,7 +7,10 @@ const router = express.Router();
 
 router.get('/', async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const chatRooms = await ChatRoom.findAll({ include: [{ model: User, as: 'owner' }] });
+    const chatRooms = await ChatRoom.findAll({
+      include: [{ model: User, as: 'owner' }],
+      order: [['createdAt', 'DESC']]
+    });
     res.json(chatRooms);
   } catch (error) {
     console.error('Error fetching chatrooms:', error);

@@ -89,7 +89,7 @@ async function fetchRecentMessages(chatRoomId: string) {
         limit: 50,
         include: [{ model: User, as: 'sentBy' }]
     });
-    return recentMessages;
+    return recentMessages.reverse();
 }
 
 async function handleJoin(ws: ExtendedWebSocket, data: WebSocketMessage) {
