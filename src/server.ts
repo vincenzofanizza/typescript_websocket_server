@@ -3,7 +3,11 @@ import sequelize from './db/sequelize';
 import { createApi } from './api/router';
 import { initializeWebSocket } from './ws/server';
 import { defineAssociations } from './db/associations';
-const port = 8080;
+import dotenv from 'dotenv';
+
+dotenv.config();
+
+const port = process.env.PORT || 8080;
 
 const apiApp = createApi();
 const server = createServer(apiApp);
@@ -16,7 +20,7 @@ sequelize.sync().then(() => {
   initializeWebSocket(server);
 
   server.listen(port, () => {
-    console.log(`Server is running on http://localhost:${port}`);
+    console.log(`Server is running on port ${port}`);
   });
 }).catch((error) => {
   console.error('Error synchronizing the database:', error);

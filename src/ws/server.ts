@@ -3,6 +3,9 @@ import { Server } from 'http';
 import { IncomingMessage } from 'http';
 import { supabase } from '../utils/supabase';
 import { ExtendedWebSocket, WebSocketMessage, handleJoin, handleMessage, handleSwitchRoom } from './utils';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 export const initializeWebSocket = async (server: Server) => {
     const wss = new WebSocket.Server({ noServer: true });
@@ -66,5 +69,5 @@ export const initializeWebSocket = async (server: Server) => {
         });
     });
 
-    console.log('WebSocket server is running on ws://localhost:8080');
+    console.log(`WebSocket server is running on port ${process.env.PORT}`);
 }
